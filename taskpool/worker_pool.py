@@ -32,31 +32,50 @@ class WorkerPool:
         #   self._q = queue.Queue()
         #   self._num_workers, self._threads = ...
         #   self._results = []  ; self._results_lock = threading.Lock()
-        raise NotImplementedError
+        self._q = queue.Queue()
+        self._threads = [threading.Thread(target = self._worker, daemon = True) for _ in range(num_workers)]
+        self._results = []
+        self._lock = threading.Lock()
 
     def start(self) -> None:
         # TODO: create and start `num_workers` threads running self._worker
-        raise NotImplementedError
+        for thread in self._threads:
+            thread.start()
 
     def submit(self, fn: Callable, *args: Any) -> None:
         # TODO: put (fn, args) on the queue
-        raise NotImplementedError
+        self._q.put((fn, args))
 
     def wait_completion(self) -> None:
         # TODO: block until all queued tasks have been processed (q.join)
-        raise NotImplementedError
+        self._q.join()
 
     def stop(self) -> None:
         # TODO: send one sentinel per worker, then join all worker threads
-        raise NotImplementedError
+        for _ in self._threads:
+            self._q.put(None)
+        for thread in self._threads:
+            thread.join()
 
     @property
     def results(self) -> list:
         # TODO: return the collected results (safe to read after stop)
-        raise NotImplementedError
+        with self._lock:
+            return self._results
 
     # ---- internals ----
     def _worker(self) -> None:
         # TODO: loop: item = q.get(); if item is None: task_done + return;
         #       else run fn(*args), store result, task_done() in a finally
-        raise NotImplementedError
+        while True:
+            item = self._q.get()
+
+            try:
+                if item is None:
+                    return 
+                fn, args = item
+                result = fn(*args)
+                with self._lock:
+                    self._results.append(result)
+            finally:
+                self._q.task_done()
