@@ -52,7 +52,11 @@ class TTLCache:
         raise NotImplementedError
 
     def __len__(self) -> int:
-        # TODO: number of live (non-expired) entries
+        # TODO: number of entries actually held in the store right now (the
+        #       memory footprint == len of your dict). NOTE: return the real
+        #       stored count, not "entries that still look unexpired" — the
+        #       whole point is that this shrinks only when the evictor (or a
+        #       lazy get) actually deletes entries.
         raise NotImplementedError
 
     # ---- lifecycle ----

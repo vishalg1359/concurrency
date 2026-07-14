@@ -22,6 +22,6 @@ def test_never_exceeds_max_concurrent():
     for t in threads:
         t.join()
 
-    assert peak <= max_c
-    assert peak >= 1
+    assert peak <= max_c                # never exceeds the cap
+    assert peak == max_c                # 20 threads contending -> cap gets filled
     assert limiter.active == 0          # everyone released

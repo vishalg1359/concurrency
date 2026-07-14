@@ -35,6 +35,16 @@ def test_never_exceeds_max_concurrent():
     s.start()
     s.scan_many([f"uniquehost{i}" for i in range(30)])
     s.stop()
-    # peak is tracked inside _do_scan via the limiter; if the limiter works,
-    # the run completes correctly with all 30 distinct network calls
     assert s.network_calls == 30
+    # The real assertion: even with 8 workers, the limiter caps live scans at 3.
+    assert s.max_observed_concurrency <= 3        # never exceeds the cap
+    assert s.max_observed_concurrency >= 2        # ...but IS actually parallel
+
+
+def test_no_limiter_would_run_all_at_once():
+    # sanity: with max_concurrent == num_workers, peak should reach the workers
+    s = Scanner(num_workers=5, max_concurrent=5, cache_ttl=5)
+    s.start()
+    s.scan_many([f"h{i}" for i in range(20)])
+    s.stop()
+    assert s.max_observed_concurrency == 5

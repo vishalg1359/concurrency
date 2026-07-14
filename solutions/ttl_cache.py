@@ -33,9 +33,12 @@ class TTLCache:
             return value
 
     def __len__(self) -> int:
-        now = time.monotonic()
+        # Footprint: how many entries are actually held in the store right now.
+        # (This is the number that exposes a leak if the evictor forgets to
+        # delete from the dict — deliberately NOT "count entries that look
+        # unexpired", which would hide the leak.)
         with self._lock:
-            return sum(1 for _, exp in self._data.values() if exp > now)
+            return len(self._data)
 
     def start(self) -> None:
         self._thread.start()

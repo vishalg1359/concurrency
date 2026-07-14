@@ -9,13 +9,15 @@ A mini "security scanner service" that scans many targets concurrently. It:
     cache instead of re-hitting the network)
   * shuts everything down cleanly
 
-You are given `_do_scan` (the simulated expensive network call). Wire the pieces.
+You are given `_do_scan` (the simulated expensive network call, which also
+records the true peak concurrency). Wire the pieces.
 
 API:
   * s = Scanner(num_workers=4, max_concurrent=2, cache_ttl=5)
   * s.start()
-  * s.scan_many(targets)  -> dict {target: result}, using cache + pool + limiter
-  * s.network_calls       -> how many times _do_scan actually ran (cache misses)
+  * s.scan_many(targets)          -> dict {target: result}, using cache+pool+limiter
+  * s.network_calls               -> how many times _do_scan actually ran
+  * s.max_observed_concurrency    -> highest number of scans that ran at once
   * s.stop()
 
 Requirements:
@@ -26,6 +28,7 @@ Requirements:
 Run: pytest -q tests/test_scanner.py
 """
 
+import threading
 import time
 from typing import Iterable
 
@@ -43,16 +46,20 @@ class Scanner:
         self._limiter = ConcurrencyLimiter(max_concurrent)
         self._pool = WorkerPool(num_workers)
         self._net_calls = Counter()
-        # peak concurrency observed inside _do_scan (for the test)
-        self._peak = Counter()
+        self._active = 0
+        self._peak = 0
+        self._active_lock = threading.Lock()
 
     # simulated expensive network/scan work — DO NOT change
     def _do_scan(self, target: str) -> str:
         with self._limiter:                 # rate-limit concurrent scans
+            with self._active_lock:
+                self._active += 1
+                self._peak = max(self._peak, self._active)
             self._net_calls.increment()
-            self._peak.increment()          # (rough peak tracking; fine for demo)
             time.sleep(0.05)
-            self._peak.decrement()
+            with self._active_lock:
+                self._active -= 1
             return f"scan-result::{target}"
 
     def start(self) -> None:
@@ -71,6 +78,11 @@ class Scanner:
     @property
     def network_calls(self) -> int:
         return self._net_calls.value
+
+    @property
+    def max_observed_concurrency(self) -> int:
+        with self._active_lock:
+            return self._peak
 
     def stop(self) -> None:
         # TODO: stop the pool and the cache cleanly

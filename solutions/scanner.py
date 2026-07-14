@@ -18,14 +18,20 @@ class Scanner:
         self._limiter = ConcurrencyLimiter(max_concurrent)
         self._pool = WorkerPool(num_workers)
         self._net_calls = Counter()
-        self._peak = Counter()
+        # true peak concurrency observed inside _do_scan
+        self._active = 0
+        self._peak = 0
+        self._active_lock = threading.Lock()
 
     def _do_scan(self, target: str) -> str:
-        with self._limiter:
+        with self._limiter:                 # rate-limit concurrent scans
+            with self._active_lock:
+                self._active += 1
+                self._peak = max(self._peak, self._active)
             self._net_calls.increment()
-            self._peak.increment()
-            time.sleep(0.05)
-            self._peak.decrement()
+            time.sleep(0.05)                # simulate slow network/scan work
+            with self._active_lock:
+                self._active -= 1
             return f"scan-result::{target}"
 
     def start(self) -> None:
@@ -54,6 +60,11 @@ class Scanner:
     @property
     def network_calls(self) -> int:
         return self._net_calls.value
+
+    @property
+    def max_observed_concurrency(self) -> int:
+        with self._active_lock:
+            return self._peak
 
     def stop(self) -> None:
         self._pool.stop()
