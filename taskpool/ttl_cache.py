@@ -39,31 +39,17 @@ class TTLCache:
         #   self._stop = threading.Event()
         #   self._interval = cleanup_interval
         #   self._thread = threading.Thread(target=self._run, daemon=True)
-        self.data = {}
-        self.heap = []
-        self.lock = threading.Lock()
-        self.stoppoint = threading.Event()
-        self.interval = cleanup_interval
-        self.thread = threading.Thread(target=self._run, daemon=True)
+        raise NotImplementedError
 
     # ---- public API ----
     def set(self, key: Any, value: Any, ttl: float) -> None:
         # TODO: compute expiry = time.monotonic() + ttl; store; push to heap
-        with self.lock:
-            expiry = time.monotonic() + ttl
-            self.data[key] = (expiry, value)
-            heapq.heappush(self.heap, (expiry, key))
+        raise NotImplementedError
 
     def get(self, key: Any) -> Optional[Any]:
-        expiry = time.monotonic()
-        with self.lock:
-            if key not in self.data:
-                return None
-            if self.data[key][0] <= expiry:
-                del self.data[key]
-                return None
-
-            return self.data[key][1]
+        # TODO: return value if present and not expired, else None
+        #       (treat expired as a miss)
+        raise NotImplementedError
 
     def __len__(self) -> int:
         # TODO: number of entries actually held in the store right now (the
@@ -71,18 +57,16 @@ class TTLCache:
         #       stored count, not "entries that still look unexpired" — the
         #       whole point is that this shrinks only when the evictor (or a
         #       lazy get) actually deletes entries.
-        with self.lock:
-            return len(self.data)
+        raise NotImplementedError
 
     # ---- lifecycle ----
     def start(self) -> None:
         # TODO: start the background cleanup thread
-        self.thread.start()
+        raise NotImplementedError
 
     def stop(self) -> None:
         # TODO: signal stop (Event.set) and join the thread for a clean shutdown
-        self.stoppoint.set()
-        self.thread.join()
+        raise NotImplementedError
 
     def __enter__(self):
         self.start()
@@ -94,17 +78,9 @@ class TTLCache:
     # ---- internals ----
     def _run(self) -> None:
         # TODO: while not self._stop.wait(self._interval): self._evict_expired()
-       while not self.stoppoint.wait(self.interval):
-           self._evict_expired()
+        raise NotImplementedError
 
     def _evict_expired(self) -> None:
         # TODO: under the lock, pop expired (expiry <= now) items off the heap,
         #       skipping stale heap entries (expiry doesn't match current dict)
-        now = time.monotonic()
-        with self.lock:
-            while self.heap and self.heap[0][0] <= now:
-                expiry, key = heapq.heappop(self.heap)
-                if key not in self.data or self.data[key][0] != expiry:
-                    continue
-                
-                del self.data[key]
+        raise NotImplementedError

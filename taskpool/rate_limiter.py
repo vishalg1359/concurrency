@@ -24,25 +24,17 @@ class ConcurrencyLimiter:
     def __init__(self, max_concurrent: int):
         # TODO: a threading.Semaphore(max_concurrent), plus a thread-safe
         #       counter of how many are currently active (Lock + int)
-        self._semaphore = threading.Semaphore(max_concurrent)
-        self._active = 0
-        self._lock = threading.Lock()
+        raise NotImplementedError
 
     def __enter__(self):
         # TODO: acquire the semaphore, then increment active (under a lock)
-        self._semaphore.acquire()
-        with self._lock:
-            self._active += 1
-        return self
+        raise NotImplementedError
 
     def __exit__(self, *exc):
         # TODO: decrement active (under a lock), then release the semaphore
-        with self._lock:
-            self._active -= 1
-        self._semaphore.release()
+        raise NotImplementedError
 
     @property
     def active(self) -> int:
         # TODO: current number of threads inside the limiter
-        with self._lock:
-            return self._active
+        raise NotImplementedError

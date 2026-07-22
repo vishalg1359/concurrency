@@ -32,50 +32,31 @@ class WorkerPool:
         #   self._q = queue.Queue()
         #   self._num_workers, self._threads = ...
         #   self._results = []  ; self._results_lock = threading.Lock()
-        self._q = queue.Queue()
-        self._threads = [threading.Thread(target = self._worker, daemon = True) for _ in range(num_workers)]
-        self._results = []
-        self._lock = threading.Lock()
+        raise NotImplementedError
 
     def start(self) -> None:
         # TODO: create and start `num_workers` threads running self._worker
-        for thread in self._threads:
-            thread.start()
+        raise NotImplementedError
 
     def submit(self, fn: Callable, *args: Any) -> None:
         # TODO: put (fn, args) on the queue
-        self._q.put((fn, args))
+        raise NotImplementedError
 
     def wait_completion(self) -> None:
         # TODO: block until all queued tasks have been processed (q.join)
-        self._q.join()
+        raise NotImplementedError
 
     def stop(self) -> None:
         # TODO: send one sentinel per worker, then join all worker threads
-        for _ in self._threads:
-            self._q.put(None)
-        for thread in self._threads:
-            thread.join()
+        raise NotImplementedError
 
     @property
     def results(self) -> list:
         # TODO: return the collected results (safe to read after stop)
-        with self._lock:
-            return self._results
+        raise NotImplementedError
 
     # ---- internals ----
     def _worker(self) -> None:
         # TODO: loop: item = q.get(); if item is None: task_done + return;
         #       else run fn(*args), store result, task_done() in a finally
-        while True:
-            item = self._q.get()
-
-            try:
-                if item is None:
-                    return 
-                fn, args = item
-                result = fn(*args)
-                with self._lock:
-                    self._results.append(result)
-            finally:
-                self._q.task_done()
+        raise NotImplementedError
