@@ -98,6 +98,37 @@ def test_concurrent_writes_are_not_lost():
     c.stop()
 
 
+def test_concurrent_set_same_key_stays_consistent():
+    # Many threads set the SAME key repeatedly. Afterwards there must be exactly
+    # one live entry and get() must agree with len(). (dict/heapq ops are
+    # individually GIL-atomic, so this is a consistency/regression check; the
+    # stale-heap and footprint-len tests below are the sharper correctness ones.)
+    c = TTLCache(cleanup_interval=100)   # no background eviction interference
+    c.start()
+    n_threads, per = 8, 3000
+    barrier = threading.Barrier(n_threads)
+    errors = []
+
+    def writer(base):
+        try:
+            barrier.wait()
+            for i in range(per):
+                c.set("shared", base * 1_000_000 + i, ttl=60)
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=writer, args=(b,)) for b in range(n_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"concurrency error(s): {errors[:3]}"
+    assert len(c) == 1
+    assert c.get("shared") is not None
+    c.stop()
+
+
 def test_high_contention_with_eviction_stays_consistent():
     # Heavy concurrent set/get on OVERLAPPING keys while the background thread
     # evicts, plus a thread hammering len() (which reads shared state). If any
