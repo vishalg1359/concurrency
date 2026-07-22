@@ -16,17 +16,21 @@ import threading
 class Counter:
     def __init__(self, start: int = 0):
         # TODO: store the value and create a threading.Lock
-        raise NotImplementedError
+        self.count = start
+        self.lock = threading.Lock()
 
     def increment(self, amount: int = 1) -> None:
         # TODO: safely add `amount` to the value
-        raise NotImplementedError
+        with self.lock:
+            self.count += amount
 
     def decrement(self, amount: int = 1) -> None:
         # TODO: safely subtract `amount` from the value
-        raise NotImplementedError
+        with self.lock:
+            self.count -= amount
 
     @property
     def value(self) -> int:
         # TODO: safely return the current value
-        raise NotImplementedError
+        with self.lock:
+            return self.count

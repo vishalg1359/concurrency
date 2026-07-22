@@ -64,7 +64,8 @@ class Scanner:
 
     def start(self) -> None:
         # TODO: start the cache's cleanup thread and the worker pool
-        raise NotImplementedError
+        self._cache.start()
+        self._pool.start()
 
     def scan_many(self, targets: Iterable[str]) -> dict:
         # TODO:
@@ -73,7 +74,19 @@ class Scanner:
         #     - else calls self._do_scan(target) and stores it in the cache
         #     - records (target, result) somewhere thread-safe
         #   wait for all jobs to finish, then return {target: result}
-        raise NotImplementedError
+        res = {}
+        def job(target):
+            cached = self._cache.get(target)
+            if not cached:
+                result = self._do_scan(target)
+                self._cache.set(target, result, self._cache_ttl)
+                res[target] = result
+
+        for target in targets:
+            self._pool.submit(job, target)
+        self._pool.wait_completion()
+        return res
+
 
     @property
     def network_calls(self) -> int:
@@ -86,4 +99,5 @@ class Scanner:
 
     def stop(self) -> None:
         # TODO: stop the pool and the cache cleanly
-        raise NotImplementedError
+        self._cache.stop()
+        self._pool.stop()
